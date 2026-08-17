@@ -13,7 +13,7 @@ try {
     await tx.unsafe(authProfileSync);
     await tx.unsafe(scheduledPublishing);
   });
-  const expectedTables = ['profiles', 'categories', 'articles', 'tags', 'article_tags', 'article_approvals', 'article_revisions', 'audit_logs', 'notifications', 'newsletter_subscribers'];
+  const expectedTables = ['profiles', 'categories', 'articles', 'tags', 'article_tags', 'article_approvals', 'article_revisions', 'audit_logs', 'notifications', 'newsletter_subscribers', 'ad_campaigns', 'ad_events'];
   const [tables] = await sql`select count(*)::int as count from information_schema.tables where table_schema = 'public' and table_name = any(${expectedTables})`;
   const [secured] = await sql`select count(*)::int as count from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = any(${expectedTables}) and c.relrowsecurity`;
   const [policies] = await sql`select count(*)::int as count from pg_policies where schemaname = 'public' and tablename = any(${['articles', 'categories', 'tags', 'article_tags']})`;

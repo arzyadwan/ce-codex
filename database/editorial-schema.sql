@@ -46,6 +46,12 @@ create table if not exists public.articles (
   status public.article_status not null default 'draft',
   is_featured boolean not null default false,
   is_breaking boolean not null default false,
+  content_type text not null default 'news' check (content_type in ('news', 'analysis', 'opinion', 'education', 'press_release', 'sponsored')),
+  sources jsonb not null default '[]'::jsonb,
+  sponsor_name text,
+  sponsor_url text,
+  sponsor_disclosure text,
+  affiliate_disclosure text,
   submitted_at timestamptz,
   published_at timestamptz,
   created_at timestamptz not null default now(),
@@ -57,6 +63,17 @@ alter table public.articles add column if not exists seo_title text;
 alter table public.articles add column if not exists seo_description text;
 alter table public.articles add column if not exists category_id uuid references public.categories(id);
 alter table public.articles add column if not exists is_breaking boolean not null default false;
+alter table public.articles add column if not exists content_type text not null default 'news';
+alter table public.articles add column if not exists sources jsonb not null default '[]'::jsonb;
+alter table public.articles add column if not exists sponsor_name text;
+alter table public.articles add column if not exists sponsor_url text;
+alter table public.articles add column if not exists sponsor_disclosure text;
+alter table public.articles add column if not exists affiliate_disclosure text;
+
+do $$ begin
+  alter table public.articles add constraint articles_content_type_check
+  check (content_type in ('news', 'analysis', 'opinion', 'education', 'press_release', 'sponsored'));
+exception when duplicate_object then null; end $$;
 
 create index if not exists articles_status_published_at_idx on public.articles(status, published_at desc);
 create index if not exists articles_author_id_idx on public.articles(author_id);
@@ -128,3 +145,21 @@ create table if not exists public.newsletter_subscribers (
   unsubscribed_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.ad_campaigns (
+  id uuid primary key default gen_random_uuid(), name text not null, advertiser text not null,
+  placement text not null check (placement in ('homepage_leaderboard','homepage_inline','article_inline','article_sidebar')),
+  status text not null default 'draft' check (status in ('draft','active','paused','ended')),
+  creative_url text not null, creative_alt text not null, destination_url text not null,
+  starts_at timestamptz not null, ends_at timestamptz not null check (ends_at > starts_at),
+  impression_count integer not null default 0 check (impression_count >= 0),
+  click_count integer not null default 0 check (click_count >= 0),
+  created_by uuid not null references public.profiles(id), created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create index if not exists ad_campaigns_active_placement_idx on public.ad_campaigns(status, placement, starts_at, ends_at);
+
+create table if not exists public.ad_events (
+  id uuid primary key default gen_random_uuid(), campaign_id uuid not null references public.ad_campaigns(id) on delete cascade,
+  type text not null check (type in ('impression','click')), session_hash text, occurred_at timestamptz not null default now()
+);
+create index if not exists ad_events_campaign_type_occurred_idx on public.ad_events(campaign_id, type, occurred_at);

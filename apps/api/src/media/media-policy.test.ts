@@ -11,3 +11,6 @@ test("menolak tipe file executable", () => {
 test("menolak gambar lebih dari 10 MB", () => {
   assert.throws(() => parseMediaUpload({ fileName: "besar.png", contentType: "image/png", size: 10 * 1024 * 1024 + 1 }));
 });
+test("memisahkan creative iklan ke purpose advertisement", () => {
+  assert.equal(parseMediaUpload({ fileName: "banner.webp", contentType: "image/webp", size: 1024, purpose: "advertisement" }).purpose, "advertisement");
+});

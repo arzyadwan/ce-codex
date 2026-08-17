@@ -6,9 +6,255 @@ import { cache } from "react";
 import { ArticleCard } from "@/app/_components/article-card";
 import { PublicShell } from "@/app/_components/public-shell";
 import { RichTextContent, type RichTextNode } from "@/app/_components/rich-text-content";
+import { SponsorBanner } from "@/app/_components/sponsor-banner";
 import { getPublicArticles, type PublicArticle } from "@/lib/public-api";
 
-type Article = PublicArticle & { content: RichTextNode; seoTitle: string | null; seoDescription: string | null; updatedAt: string };
-const getArticle=cache(async(slug:string):Promise<Article|null>=>{const response=await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles/${slug}`,{next:{revalidate:60,tags:[`article:${slug}`]}});if(response.status===404)return null;if(!response.ok)throw new Error("Artikel tidak dapat dimuat.");return response.json();});
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const article=await getArticle((await params).slug);if(!article)return{title:"Artikel tidak ditemukan"};const title=article.seoTitle||article.title;const description=article.seoDescription||article.excerpt;return{title,description,alternates:{canonical:`/artikel/${article.slug}`},authors:article.author?[{name:article.author.displayName,url:`/penulis/${article.author.username}`}]:undefined,openGraph:{type:"article",title,description,publishedTime:article.publishedAt??undefined,modifiedTime:article.updatedAt,authors:article.author?[article.author.displayName]:undefined,images:article.featuredImageUrl?[{url:article.featuredImageUrl,alt:article.title}]:[]},twitter:{card:"summary_large_image",title,description,images:article.featuredImageUrl?[article.featuredImageUrl]:[]}};}
-export default async function ArticlePage({params}:{params:Promise<{slug:string}>}){const article=await getArticle((await params).slug);if(!article)notFound();const related=article.category?await getPublicArticles({category:article.category.slug,limit:"4"}):await getPublicArticles({limit:"4"});const relatedItems=related.items.filter((item)=>item.id!==article.id).slice(0,3);const base=process.env.NEXT_PUBLIC_APP_URL??"http://localhost:3000";const jsonLd={"@context":"https://schema.org","@type":"NewsArticle",headline:article.title,description:article.excerpt,image:article.featuredImageUrl?[article.featuredImageUrl]:undefined,datePublished:article.publishedAt,dateModified:article.updatedAt,mainEntityOfPage:`${base}/artikel/${article.slug}`,author:article.author?{"@type":"Person",name:article.author.displayName,url:`${base}/penulis/${article.author.username}`}:undefined,publisher:{"@type":"Organization",name:"Crypto Exist",logo:{"@type":"ImageObject",url:`${base}/logo.png`}}};return <PublicShell><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}}/><article className="article-page"><nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Beranda</Link><span aria-hidden="true">/</span>{article.category?<Link href={`/kategori/${article.category.slug}`}>{article.category.name}</Link>:<Link href="/berita">Berita</Link>}<span aria-hidden="true">/</span><span aria-current="page">Artikel</span></nav><p className="kicker">CRYPTO EXIST · {article.category?.name??"BERITA"}</p><h1>{article.title}</h1><p className="article-deck">{article.excerpt}</p><div className="article-meta">{article.author&&<span>Oleh <Link href={`/penulis/${article.author.username}`}>{article.author.displayName}</Link></span>}<span>Diterbitkan <time dateTime={article.publishedAt??undefined}>{article.publishedAt?new Intl.DateTimeFormat("id-ID",{dateStyle:"long"}).format(new Date(article.publishedAt)):"hari ini"}</time></span>{article.updatedAt!==article.publishedAt&&<span>Diperbarui <time dateTime={article.updatedAt}>{new Intl.DateTimeFormat("id-ID",{dateStyle:"long"}).format(new Date(article.updatedAt))}</time></span>}</div>{article.tags.length>0&&<div className="news-card-tags" aria-label="Tag artikel">{article.tags.map((tag)=><Link key={tag.slug} href={`/tag/${tag.slug}`}>#{tag.name}</Link>)}</div>}{article.featuredImageUrl&&<figure className="article-hero"><Image src={article.featuredImageUrl} alt={`Ilustrasi artikel: ${article.title}`} fill sizes="(max-width: 900px) 100vw, 1100px" priority/></figure>}<div className="article-body"><RichTextContent document={article.content}/><aside className="article-disclaimer"><strong>Disclaimer</strong><p>Konten ini bersifat informasi dan edukasi, bukan nasihat keuangan. Selalu lakukan riset mandiri.</p></aside></div></article>{relatedItems.length>0&&<section className="latest-section related-section"><div className="section-heading"><p className="kicker">BACA SELANJUTNYA</p><h2>Artikel terkait</h2></div><div className="news-grid">{relatedItems.map((item)=><ArticleCard article={item} key={item.id}/>)}</div></section>}</PublicShell>;}
+type Article = PublicArticle & {
+  content: RichTextNode;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  updatedAt: string;
+};
+
+function articleText(node: RichTextNode): string {
+  return [node.text ?? "", ...(node.content ?? []).map(articleText)].join(" ");
+}
+
+const getArticle = cache(async (slug: string): Promise<Article | null> => {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles/${slug}`, {
+    next: { revalidate: 60, tags: [`article:${slug}`] },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("Artikel tidak dapat dimuat.");
+  return response.json();
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const article = await getArticle((await params).slug);
+  if (!article) return { title: "Artikel tidak ditemukan" };
+
+  const title = article.seoTitle || article.title;
+  const description = article.seoDescription || article.excerpt;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/artikel/${article.slug}` },
+    authors: article.author
+      ? [{ name: article.author.displayName, url: `/penulis/${article.author.username}` }]
+      : undefined,
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      publishedTime: article.publishedAt ?? undefined,
+      modifiedTime: article.updatedAt,
+      authors: article.author ? [article.author.displayName] : undefined,
+      images: article.featuredImageUrl
+        ? [{ url: article.featuredImageUrl, alt: article.title }]
+        : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: article.featuredImageUrl ? [article.featuredImageUrl] : [],
+    },
+  };
+}
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const article = await getArticle((await params).slug);
+  if (!article) notFound();
+  const readingMinutes = Math.max(1, Math.ceil(articleText(article.content).trim().split(/\s+/).filter(Boolean).length / 200));
+
+  const related = article.category
+    ? await getPublicArticles({ category: article.category.slug, limit: "4" })
+    : await getPublicArticles({ limit: "4" });
+  const relatedItems = related.items.filter((item) => item.id !== article.id).slice(0, 3);
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": article.contentType === "sponsored" ? "Article" : "NewsArticle",
+    headline: article.title,
+    description: article.excerpt,
+    image: article.featuredImageUrl ? [article.featuredImageUrl] : undefined,
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt,
+    mainEntityOfPage: `${base}/artikel/${article.slug}`,
+    author: article.author
+      ? {
+          "@type": "Person",
+          name: article.author.displayName,
+          url: `${base}/penulis/${article.author.username}`,
+        }
+      : undefined,
+    publisher: {
+      "@type": "Organization",
+      name: "Crypto Exist",
+      logo: { "@type": "ImageObject", url: `${base}/logo.png` },
+    },
+  };
+
+  return (
+    <PublicShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
+      <article className="article-page">
+        <nav className="breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/">Beranda</Link>
+          <span aria-hidden="true">/</span>
+          {article.category ? (
+            <Link href={`/kategori/${article.category.slug}`}>{article.category.name}</Link>
+          ) : (
+            <Link href="/berita">Berita</Link>
+          )}
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Artikel</span>
+        </nav>
+
+        <div className="card-labels">
+          <p className="kicker">CRYPTO EXIST · {article.category?.name ?? "BERITA"}</p>
+          {article.contentType === "sponsored" ? (
+            <span className="commercial-label">Konten sponsor</span>
+          ) : null}
+          {article.contentType === "press_release" ? (
+            <span className="commercial-label">Siaran pers</span>
+          ) : null}
+        </div>
+        <h1>{article.title}</h1>
+        <p className="article-deck">{article.excerpt}</p>
+
+        {article.contentType === "sponsored" && article.sponsorDisclosure ? (
+          <aside className="commercial-disclosure" aria-label="Keterangan sponsor">
+            <strong>Transparansi konten:</strong> {article.sponsorDisclosure}
+            {article.sponsorName ? (
+              <>
+                {" "}Sponsor: {article.sponsorUrl ? (
+                  <a href={article.sponsorUrl} rel="sponsored nofollow">
+                    {article.sponsorName}
+                  </a>
+                ) : (
+                  article.sponsorName
+                )}.
+              </>
+            ) : null}
+          </aside>
+        ) : null}
+
+        <div className="article-meta">
+          {article.author ? (
+            <span>
+              Oleh{" "}
+              <Link href={`/penulis/${article.author.username}`}>
+                {article.author.displayName}
+              </Link>
+            </span>
+          ) : null}
+          <span>
+            Diterbitkan{" "}
+            <time dateTime={article.publishedAt ?? undefined}>
+              {article.publishedAt
+                ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
+                    new Date(article.publishedAt),
+                  )
+                : "hari ini"}
+            </time>
+          </span>
+          {article.updatedAt !== article.publishedAt ? (
+            <span>
+              Diperbarui{" "}
+              <time dateTime={article.updatedAt}>
+                {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
+                  new Date(article.updatedAt),
+                )}
+              </time>
+            </span>
+          ) : null}
+          <span>{readingMinutes} menit baca</span>
+        </div>
+
+        {article.tags.length > 0 ? (
+          <div className="news-card-tags" aria-label="Tag artikel">
+            {article.tags.map((tag) => (
+              <Link key={tag.slug} href={`/tag/${tag.slug}`}>
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
+        {article.featuredImageUrl ? (
+          <figure className="article-hero">
+            <Image
+              src={article.featuredImageUrl}
+              alt={`Ilustrasi artikel: ${article.title}`}
+              fill
+              sizes="(max-width: 900px) 100vw, 1100px"
+              priority
+            />
+          </figure>
+        ) : null}
+
+        <SponsorBanner placement="article_inline" />
+
+        <div className="article-body">
+          <RichTextContent document={article.content} />
+
+          {article.sources.length > 0 ? (
+            <section className="article-sources" aria-labelledby="article-sources-title">
+              <h2 id="article-sources-title">Sumber dan referensi</h2>
+              <ol>
+                {article.sources.map((source) => (
+                  <li key={`${source.url}-${source.title}`}>
+                    <a href={source.url} target="_blank" rel="noopener noreferrer">
+                      {source.title}
+                    </a>
+                    {source.publisher ? ` — ${source.publisher}` : null}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
+
+          {article.affiliateDisclosure ? (
+            <aside className="commercial-disclosure" aria-label="Keterangan afiliasi">
+              <strong>Keterangan afiliasi:</strong> {article.affiliateDisclosure}
+            </aside>
+          ) : null}
+
+          <aside className="article-disclaimer">
+            <strong>Disclaimer</strong>
+            <p>
+              Konten ini bersifat informasi dan edukasi, bukan nasihat keuangan. Selalu lakukan
+              riset mandiri.
+            </p>
+          </aside>
+        </div>
+      </article>
+
+      {relatedItems.length > 0 ? (
+        <section className="latest-section related-section">
+          <div className="section-heading">
+            <p className="kicker">BACA SELANJUTNYA</p>
+            <h2>Artikel terkait</h2>
+          </div>
+          <div className="news-grid">
+            {relatedItems.map((item) => (
+              <ArticleCard article={item} key={item.id} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </PublicShell>
+  );
+}

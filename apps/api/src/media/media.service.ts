@@ -24,7 +24,8 @@ export class MediaService {
     try {
       const media = parseMediaUpload(input);
       const now = new Date();
-      const key = `articles/${userId}/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${media.extension}`;
+      const folder = media.purpose === "advertisement" ? "advertisements" : "articles";
+      const key = `${folder}/${userId}/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${media.extension}`;
       const command = new PutObjectCommand({ Bucket: this.bucket, Key: key, ContentType: media.contentType, ContentLength: media.size, Metadata: { uploadedBy: userId } });
       const uploadUrl = await getSignedUrl(this.client, command, { expiresIn: 300 });
       const publicBase = process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, "");

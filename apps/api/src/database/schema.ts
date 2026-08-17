@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const editorialRole = pgEnum("editorial_role", ["author", "editor", "admin"]);
 export const articleStatus = pgEnum("article_status", ["draft", "changes_requested", "in_review", "scheduled", "published", "archived"]);
@@ -24,6 +24,10 @@ export const articles = pgTable("articles", {
   content: jsonb("content").notNull(), status: articleStatus("status").notNull().default("draft"),
   isFeatured: boolean("is_featured").notNull().default(false),
   isBreaking: boolean("is_breaking").notNull().default(false),
+  contentType: text("content_type").notNull().default("news"),
+  sources: jsonb("sources").notNull().default([]),
+  sponsorName: text("sponsor_name"), sponsorUrl: text("sponsor_url"),
+  sponsorDisclosure: text("sponsor_disclosure"), affiliateDisclosure: text("affiliate_disclosure"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }), publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -80,3 +84,25 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("newsletter_subscribers_email_key").on(table.email)]);
+
+export const adCampaigns = pgTable("ad_campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(), advertiser: text("advertiser").notNull(),
+  placement: text("placement").notNull(), status: text("status").notNull().default("draft"),
+  creativeUrl: text("creative_url").notNull(), creativeAlt: text("creative_alt").notNull(),
+  destinationUrl: text("destination_url").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  impressionCount: integer("impression_count").notNull().default(0),
+  clickCount: integer("click_count").notNull().default(0),
+  createdBy: uuid("created_by").notNull().references(() => profiles.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("ad_campaigns_active_placement_idx").on(table.status, table.placement, table.startsAt, table.endsAt)]);
+
+export const adEvents = pgTable("ad_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  campaignId: uuid("campaign_id").notNull().references(() => adCampaigns.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), sessionHash: text("session_hash"),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("ad_events_campaign_type_occurred_idx").on(table.campaignId, table.type, table.occurredAt)]);
