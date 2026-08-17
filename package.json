@@ -3,6 +3,6 @@
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "engines": { "node": ">=22" },
-  "scripts": { "build": "turbo run build", "dev": "turbo run dev", "env:sync": "node scripts/sync-public-env.mjs", "lint": "turbo run lint", "test": "turbo run test", "typecheck": "turbo run typecheck" },
+  "scripts": { "build": "turbo run build", "dev": "turbo run dev", "env:check": "node scripts/check-env-example.mjs", "env:sync": "node scripts/sync-public-env.mjs", "lint": "turbo run lint", "test": "turbo run test", "typecheck": "turbo run typecheck" },
   "devDependencies": { "turbo": "^2.5.6", "typescript": "^5.9.2" }
 }

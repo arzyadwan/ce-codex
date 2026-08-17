@@ -133,11 +133,23 @@ Variabel `SUPABASE_SERVICE_ROLE_KEY` dan seluruh kredensial R2 bersifat server-o
 ```bash
 pnpm dev          # menjalankan web dan API dalam watch mode
 pnpm build        # build production seluruh workspace
+pnpm env:check    # memastikan template environment tidak berisi secret
 pnpm typecheck    # pemeriksaan TypeScript
 pnpm lint         # quality gate statis saat ini
 pnpm test         # menjalankan test workspace
 pnpm audit --prod # audit dependency production
 ```
+
+## Continuous integration
+
+Workflow GitHub Actions menjalankan pemeriksaan berikut pada setiap pull request dan push ke `main`:
+
+- validasi `.env.example`;
+- typecheck, lint, test, dan production build seluruh workspace;
+- audit vulnerability dependency production tingkat tinggi/kritis;
+- build image OCI untuk API dari `apps/api/Dockerfile`.
+
+Dependabot memeriksa dependency npm setiap minggu dan GitHub Actions setiap bulan. Perubahan major tidak dikelompokkan otomatis agar migration guide dan dampaknya dapat ditinjau terpisah.
 
 Utility API:
 

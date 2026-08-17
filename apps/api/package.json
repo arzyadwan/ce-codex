@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "db:apply": "node scripts/apply-schema.mjs",
     "db:audit-auth": "node scripts/audit-auth.mjs",
+    "db:seed-demo": "node scripts/seed-demo.mjs",
     "security:smoke": "node scripts/smoke-security.mjs",
     "user:bootstrap": "node scripts/bootstrap-editorial-user.mjs",
     "lint": "tsc --noEmit",

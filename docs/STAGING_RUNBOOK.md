@@ -4,10 +4,13 @@
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm env:check
 pnpm typecheck
 pnpm test
 pnpm audit --prod
 ```
+
+Pastikan workflow `CI` pada revision yang akan dirilis berstatus hijau. Jangan melanjutkan staging jika quality job atau build image API gagal.
 
 ## 2. Supabase staging
 
