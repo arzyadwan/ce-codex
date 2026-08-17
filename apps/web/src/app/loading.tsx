@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="page-state" aria-busy="true"><div className="state-skeleton"/><div className="state-skeleton short"/><p>Memuat konten Crypto Exist…</p></main>}

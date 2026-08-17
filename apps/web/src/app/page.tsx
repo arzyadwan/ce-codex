@@ -1,28 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArticleCard } from "@/app/_components/article-card";
+import { NewsletterForm } from "@/app/_components/newsletter-form";
+import { PublicShell } from "@/app/_components/public-shell";
+import { getPublicArticles, getPublicFacets } from "@/lib/public-api";
 
-type Article = { id: string; title: string; slug: string; excerpt: string; featuredImageUrl: string | null; publishedAt: string | null; category: { name: string; slug: string } | null; tags: Array<{ name: string; slug: string }> };
-type ArticleResponse = { items: Article[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
-const categories = [{ name: "Semua", slug: "" }, { name: "Berita Pasar", slug: "berita-pasar" }, { name: "Analisis", slug: "analisis" }, { name: "Edukasi", slug: "edukasi" }, { name: "Web3 & DeFi", slug: "web3-defi" }];
-async function getArticles(filters: { category?: string; tag?: string; query?: string; page?: string }): Promise<ArticleResponse> {
-  try {
-    const params = new URLSearchParams();
-    if (filters.category) params.set("category", filters.category);
-    if (filters.tag) params.set("tag", filters.tag);
-    if (filters.query) params.set("q", filters.query);
-    if (filters.page) params.set("page", filters.page);
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/articles?${params}`, { cache: "no-store" });
-    return response.ok ? response.json() : { items: [], pagination: { page: 1, limit: 9, total: 0, totalPages: 1 } };
-  } catch { return { items: [], pagination: { page: 1, limit: 9, total: 0, totalPages: 1 } }; }
-}
-function pageHref(page: number, selected: { category?: string; tag?: string; q?: string }) { const params = new URLSearchParams(); if (selected.category) params.set("category", selected.category); if (selected.tag) params.set("tag", selected.tag); if (selected.q) params.set("q", selected.q); params.set("page", String(page)); return `/?${params}#latest`; }
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string }> }) {
-  const selected = await searchParams;
-  const result = await getArticles({ category: selected.category, tag: selected.tag, query: selected.q, page: selected.page }); const articles = result.items; const featured = articles[0];
-  return <main><header className="public-header"><Link href="/" className="wordmark">CRYPTO <b>EXIST</b></Link><nav aria-label="Navigasi utama"><a href="#latest">Berita</a><a href="#latest">Analisis</a><a href="#latest">Edukasi</a><Link href="/login">Ruang redaksi</Link></nav></header>
-    <form className="public-search" action="/"><label className="sr-only" htmlFor="news-search">Cari berita</label><input id="news-search" name="q" defaultValue={selected.q ?? ""} placeholder="Cari Bitcoin, Ethereum, regulasi…" />{selected.category && <input type="hidden" name="category" value={selected.category} />}<button className="button-primary">Cari berita</button></form>
-    <nav className="taxonomy-bar" aria-label="Filter kategori">{categories.map((category) => <Link key={category.slug} className={`taxonomy-chip ${(selected.category ?? "") === category.slug ? "taxonomy-chip-active" : ""}`} href={category.slug ? `/?category=${category.slug}#latest` : "/#latest"}>{category.name}</Link>)}</nav>
-    <section className="news-hero">{featured ? <><div className="news-hero-copy"><p className="kicker">BERITA UTAMA</p><h1><Link href={`/artikel/${featured.slug}`}>{featured.title}</Link></h1><p>{featured.excerpt}</p><Link className="button-primary inline-button" href={`/artikel/${featured.slug}`}>Baca selengkapnya</Link></div>{featured.featuredImageUrl && <div className="news-hero-image"><Image src={featured.featuredImageUrl} fill priority sizes="(max-width: 900px) 100vw, 50vw" alt={`Featured image untuk ${featured.title}`} /></div>}</> : <div className="news-hero-copy"><p className="kicker">CRYPTO EXIST</p><h1>Memahami crypto tanpa kehilangan konteks.</h1><p>Berita independen, analisis pasar, dan edukasi Web3 dalam Bahasa Indonesia.</p></div>}</section>
-    <section className="latest-section" id="latest"><div className="section-heading"><p className="kicker">PUBLIKASI · {result.pagination.total} ARTIKEL</p><h2>{selected.q ? `Hasil untuk “${selected.q}”` : selected.tag ? `Tag #${selected.tag}` : "Berita terbaru"}</h2></div>{articles.length ? <><div className="news-grid">{articles.map((article) => <article className="news-card" key={article.id}>{article.featuredImageUrl && <div className="news-card-image"><Image src={article.featuredImageUrl} fill sizes="(max-width: 700px) 100vw, 33vw" alt={`Featured image untuk ${article.title}`} /></div>}<p className="kicker">{article.category?.name ?? "BLOCKCHAIN · WEB3"}</p><h3><Link href={`/artikel/${article.slug}`}>{article.title}</Link></h3><p>{article.excerpt}</p>{article.tags.length > 0 && <div className="news-card-tags" aria-label="Tag artikel">{article.tags.map((tag) => <Link key={tag.slug} href={`/?tag=${tag.slug}#latest`}>#{tag.name}</Link>)}</div>}</article>)}</div>{result.pagination.totalPages > 1 && <nav className="pagination" aria-label="Navigasi halaman berita"><Link aria-disabled={result.pagination.page <= 1} className={result.pagination.page <= 1 ? "pagination-disabled" : ""} href={pageHref(Math.max(1, result.pagination.page - 1), selected)}>Sebelumnya</Link><span>Halaman {result.pagination.page} dari {result.pagination.totalPages}</span><Link aria-disabled={result.pagination.page >= result.pagination.totalPages} className={result.pagination.page >= result.pagination.totalPages ? "pagination-disabled" : ""} href={pageHref(Math.min(result.pagination.totalPages, result.pagination.page + 1), selected)}>Berikutnya</Link></nav>}</> : <p className="empty-state">Tidak ada artikel yang cocok dengan filter ini.</p>}</section>
-  </main>;
+export default async function HomePage() {
+  const [result, facets] = await Promise.all([getPublicArticles({ limit: "7" }), getPublicFacets()]);
+  const [featured, ...latest] = result.items;
+  const breaking = result.items.find((article) => article.isBreaking);
+  return <PublicShell>
+    {breaking ? <aside className="breaking-banner" aria-label="Breaking news"><strong>BREAKING</strong><Link href={`/artikel/${breaking.slug}`}>{breaking.title}</Link></aside> : null}
+    <section className="news-hero">{featured ? <><div className="news-hero-copy"><p className="kicker">BERITA UTAMA</p><h1><Link href={`/artikel/${featured.slug}`}>{featured.title}</Link></h1><p>{featured.excerpt}</p><Link className="button-primary inline-button" href={`/artikel/${featured.slug}`}>Baca selengkapnya</Link></div>{featured.featuredImageUrl && <div className="news-hero-image"><Image src={featured.featuredImageUrl} fill priority sizes="(max-width: 900px) 100vw, 50vw" alt={`Ilustrasi berita: ${featured.title}`} /></div>}</> : <div className="news-hero-copy"><p className="kicker">CRYPTO EXIST</p><h1>Memahami crypto tanpa kehilangan konteks.</h1><p>Berita independen, analisis pasar, dan edukasi Web3 dalam Bahasa Indonesia.</p><Link className="button-primary inline-button" href="/berita">Jelajahi berita</Link></div>}</section>
+    <nav className="taxonomy-bar" aria-label="Jelajahi kategori">{facets.categories.map((category) => <Link key={category.slug} className="taxonomy-chip" href={`/kategori/${category.slug}`}>{category.name} <span>{category.count}</span></Link>)}</nav>
+    <section className="latest-section"><div className="section-heading heading-with-link"><div><p className="kicker">PUBLIKASI TERBARU</p><h2>Kabar yang perlu Anda pahami</h2></div><Link className="text-link" href="/berita">Lihat semua berita</Link></div>{latest.length > 0 ? <div className="news-grid">{latest.map((article) => <ArticleCard article={article} key={article.id} />)}</div> : <div className="empty-state"><h3>Belum ada artikel terbit</h3><p>Redaksi sedang menyiapkan publikasi pertama.</p></div>}</section>
+    <NewsletterForm />
+  </PublicShell>;
 }

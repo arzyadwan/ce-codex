@@ -14,6 +14,11 @@ export const listArticlesQuerySchema = z.object({
   category: categorySlugSchema.optional(),
   tag: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80).optional(),
   q: z.string().trim().max(100).optional(),
+  author: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80).optional(),
+});
+export const newsletterSubscribeSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  consent: z.literal(true),
 });
 export const updateCategorySchema = z.object({
   name: z.string().trim().min(3).max(60),
@@ -64,3 +69,4 @@ export type ListArticlesQuery = z.infer<typeof listArticlesQuerySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type RequestChangesInput = z.infer<typeof requestChangesSchema>;
 export type ScheduleArticleInput = z.infer<typeof scheduleArticleSchema>;
+export type NewsletterSubscribeInput = z.infer<typeof newsletterSubscribeSchema>;

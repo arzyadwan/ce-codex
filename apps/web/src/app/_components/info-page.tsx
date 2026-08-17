@@ -1,0 +1,2 @@
+import { PublicShell } from "./public-shell";
+export function InfoPage({ eyebrow, title, intro, children }: { eyebrow: string; title: string; intro: string; children: React.ReactNode }) { return <PublicShell><article className="info-page"><header><p className="kicker">{eyebrow}</p><h1>{title}</h1><p className="info-intro">{intro}</p></header><div className="info-body">{children}</div></article></PublicShell>; }

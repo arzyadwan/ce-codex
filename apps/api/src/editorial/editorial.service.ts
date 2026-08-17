@@ -18,12 +18,21 @@ export class EditorialService {
     if (filters.category) conditions.push(eq(categories.slug, filters.category));
     if (filters.q) conditions.push(or(ilike(articles.title, `%${filters.q}%`), ilike(articles.excerpt, `%${filters.q}%`))!);
     if (filters.tag) conditions.push(sql`exists (select 1 from ${articleTags} at join ${tags} t on t.id = at.tag_id where at.article_id = ${articles.id} and t.slug = ${filters.tag})`);
+    if (filters.author) conditions.push(eq(profiles.username, filters.author));
     const where = and(...conditions);
-    const [totalRow] = await this.database.db.select({ total: count() }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).where(where);
-    const rows = await this.database.db.select({ article: articles, category: categories }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).where(where).orderBy(desc(articles.publishedAt)).limit(filters.limit).offset((filters.page - 1) * filters.limit);
-    const items = await Promise.all(rows.map(async ({ article, category }) => ({ ...article, category, tags: await this.getArticleTags(article.id) })));
+    const [totalRow] = await this.database.db.select({ total: count() }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).innerJoin(profiles, eq(articles.authorId, profiles.id)).where(where);
+    const rows = await this.database.db.select({ article: articles, category: categories, author: { displayName: profiles.displayName, username: profiles.username } }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).innerJoin(profiles, eq(articles.authorId, profiles.id)).where(where).orderBy(desc(articles.isFeatured), desc(articles.publishedAt)).limit(filters.limit).offset((filters.page - 1) * filters.limit);
+    const items = await Promise.all(rows.map(async ({ article, category, author }) => ({ ...article, category, author, tags: await this.getArticleTags(article.id) })));
     const total = totalRow?.total ?? 0;
     return { items, pagination: { page: filters.page, limit: filters.limit, total, totalPages: Math.max(1, Math.ceil(total / filters.limit)) } };
+  }
+
+  async listPublicFacets() {
+    const published = eq(articles.status, "published");
+    const categoryRows = await this.database.db.select({ name: categories.name, slug: categories.slug, description: categories.description, count: count(articles.id) }).from(categories).leftJoin(articles, and(eq(articles.categoryId, categories.id), published)).groupBy(categories.id).orderBy(categories.name);
+    const tagRows = await this.database.db.select({ name: tags.name, slug: tags.slug, count: count(articleTags.articleId) }).from(tags).leftJoin(articleTags, eq(tags.id, articleTags.tagId)).leftJoin(articles, and(eq(articleTags.articleId, articles.id), published)).groupBy(tags.id).orderBy(desc(count(articleTags.articleId)), tags.name);
+    const authorRows = await this.database.db.select({ displayName: profiles.displayName, username: profiles.username, count: count(articles.id) }).from(profiles).leftJoin(articles, and(eq(articles.authorId, profiles.id), published)).groupBy(profiles.id).orderBy(profiles.displayName);
+    return { categories: categoryRows, tags: tagRows.filter((tag) => tag.count > 0), authors: authorRows.filter((author) => author.count > 0) };
   }
 
   async listMine(userId: string) {
@@ -268,7 +277,8 @@ export class EditorialService {
 
   private async enrichArticle<T extends { id: string; categoryId: string | null }>(article: T) {
     const [category] = article.categoryId ? await this.database.db.select().from(categories).where(eq(categories.id, article.categoryId)).limit(1) : [];
-    return { ...article, category: category ?? null, tags: await this.getArticleTags(article.id) };
+    const [author] = await this.database.db.select({ displayName: profiles.displayName, username: profiles.username }).from(profiles).where(eq(profiles.id, (article as T & { authorId: string }).authorId)).limit(1);
+    return { ...article, category: category ?? null, author: author ?? null, tags: await this.getArticleTags(article.id) };
   }
 
   private async log(actorId: string, action: string, targetId: string) {

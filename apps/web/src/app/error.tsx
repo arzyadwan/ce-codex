@@ -1,0 +1,1 @@
+"use client";export default function ErrorPage({reset}:{reset:()=>void}){return <main className="page-state"><p className="kicker">GANGGUAN SEMENTARA</p><h1>Konten belum dapat dimuat.</h1><p>Periksa koneksi Anda lalu coba kembali.</p><button className="button-primary" onClick={reset}>Coba lagi</button></main>}

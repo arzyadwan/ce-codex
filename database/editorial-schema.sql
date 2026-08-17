@@ -45,6 +45,7 @@ create table if not exists public.articles (
   content jsonb not null,
   status public.article_status not null default 'draft',
   is_featured boolean not null default false,
+  is_breaking boolean not null default false,
   submitted_at timestamptz,
   published_at timestamptz,
   created_at timestamptz not null default now(),
@@ -55,6 +56,7 @@ alter table public.articles add column if not exists featured_image_url text;
 alter table public.articles add column if not exists seo_title text;
 alter table public.articles add column if not exists seo_description text;
 alter table public.articles add column if not exists category_id uuid references public.categories(id);
+alter table public.articles add column if not exists is_breaking boolean not null default false;
 
 create index if not exists articles_status_published_at_idx on public.articles(status, published_at desc);
 create index if not exists articles_author_id_idx on public.articles(author_id);
@@ -118,3 +120,11 @@ create table if not exists public.notifications (
 
 create index if not exists notifications_recipient_read_created_idx
 on public.notifications(recipient_id, read_at, created_at desc);
+
+create table if not exists public.newsletter_subscribers (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  consented_at timestamptz not null default now(),
+  unsubscribed_at timestamptz,
+  created_at timestamptz not null default now()
+);

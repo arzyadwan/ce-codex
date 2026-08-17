@@ -23,6 +23,9 @@ export class EditorialController {
   @UseGuards(SupabaseAuthGuard)
   listReviewQueue(@CurrentUser() user: AuthenticatedUser) { return this.editorial.listReviewQueue(user.id); }
 
+  @Get("facets")
+  listPublicFacets() { return this.editorial.listPublicFacets(); }
+
   @Get("editorial/:id")
   @ApiBearerAuth()
   @UseGuards(SupabaseAuthGuard)

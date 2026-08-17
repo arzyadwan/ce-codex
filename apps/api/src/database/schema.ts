@@ -23,6 +23,7 @@ export const articles = pgTable("articles", {
   categoryId: uuid("category_id").references(() => categories.id),
   content: jsonb("content").notNull(), status: articleStatus("status").notNull().default("draft"),
   isFeatured: boolean("is_featured").notNull().default(false),
+  isBreaking: boolean("is_breaking").notNull().default(false),
   submittedAt: timestamp("submitted_at", { withTimezone: true }), publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -71,3 +72,11 @@ export const notifications = pgTable("notifications", {
   uniqueIndex("notifications_recipient_dedupe_key").on(table.recipientId, table.dedupeKey),
   index("notifications_recipient_read_created_idx").on(table.recipientId, table.readAt, table.createdAt),
 ]);
+
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  consentedAt: timestamp("consented_at", { withTimezone: true }).notNull().defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("newsletter_subscribers_email_key").on(table.email)]);
