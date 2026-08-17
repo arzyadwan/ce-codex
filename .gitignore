@@ -1,0 +1,14 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+.agents/skills/
+.env
+.env.local
+!.env.example
+tmp/
+graphify-out/
+~$*.docx

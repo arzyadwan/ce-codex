@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  '@scarf/scarf': false
+minimumReleaseAgeExclude:
+  - '@nestjs/swagger@11.4.7'
